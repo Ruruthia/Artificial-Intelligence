@@ -54,7 +54,7 @@ def prepare_possibilities(img, row_vals, col_vals):
     return possible_row_values, possible_col_values
 
 def update_row_and_masks(idx, possible_row_values,img):
-    row = img[idx, :] 
+    row = img[idx, :]
     certain_zeros = np.zeros(len(row), dtype = 'int64')
     certain_ones = np.ones(len(row), dtype = 'int64')
     for possibility in possible_row_values[idx]:
@@ -64,7 +64,7 @@ def update_row_and_masks(idx, possible_row_values,img):
         if certain_zeros[i] == 0:
             row[i] = 0
         if certain_ones[i] == 1:
-            row[i] = 1 
+            row[i] = 1
     updated_possibilities = []
     for mask in possible_row_values[idx]:
         if np.all(mask[row == 1] == 1) and np.all(mask[row == 0] == 0):
@@ -76,7 +76,7 @@ def update_col_and_masks(idx, possible_col_values, img):
     col = img[:, idx]
     certain_zeros = np.zeros(len(col), dtype = 'int64')
     certain_ones = np.ones(len(col), dtype = 'int64')
-    
+
     for possibility in possible_col_values[idx]:
         certain_zeros |= possibility
         certain_ones &= possibility
@@ -115,5 +115,5 @@ def main_loop():
             update_col_and_masks(i, possible_col_values, img)
     print_img(img)
 
-    
+
 main_loop()
