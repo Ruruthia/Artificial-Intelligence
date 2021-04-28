@@ -1,5 +1,9 @@
 from itertools import zip_longest
 import numpy as np
+import copy
+
+np.random.seed(42)
+
 
 def init():
     with open("zad_input.txt", "r") as f_in:
@@ -10,11 +14,12 @@ def init():
         row_values = []
         col_values = []
         for row in range(rows):
-            row_values.append([int(number) for number in f_in.readline().split(' ')])
+            row_values.append([int(number) for number in f_in.readline().split(" ")])
         for col in range(cols):
-            col_values.append([int(number) for number in f_in.readline().split(' ')])
-    img = np.zeros((rows, cols), dtype='int64') - 1
+            col_values.append([int(number) for number in f_in.readline().split(" ")])
+    img = np.zeros((rows, cols), dtype="int64") - 1
     return img, row_values, col_values
+
 
 def sums(length, total_sum):
     if length == 1:
@@ -24,9 +29,10 @@ def sums(length, total_sum):
             for permutation in sums(length - 1, total_sum - value):
                 yield (value,) + permutation
 
+
 def spaces_to_block(desc, spaces):
     block = []
-    for s, d in zip_longest(spaces, desc, fillvalue = 0):
+    for s, d in zip_longest(spaces, desc, fillvalue=0):
         for _ in range(s):
             block.append(0)
         for _ in range(d):
@@ -36,6 +42,7 @@ def spaces_to_block(desc, spaces):
     block.pop(-1)
     return block
 
+
 def prepare_possibilities(img, row_vals, col_vals):
     possible_row_values = [[] for _ in range(len(row_vals))]
     for idx in range(len(row_vals)):
@@ -43,20 +50,25 @@ def prepare_possibilities(img, row_vals, col_vals):
         places_for_spaces = len(r) + 1
         no_of_spaces = img.shape[1] - sum(r) - len(r) + 1
         for possible_spaces in sums(places_for_spaces, no_of_spaces):
-            possible_row_values[idx].append(np.array(spaces_to_block(r, list(possible_spaces))))
+            possible_row_values[idx].append(
+                np.array(spaces_to_block(r, list(possible_spaces)))
+            )
     possible_col_values = [[] for _ in range(len(col_vals))]
     for idx in range(len(col_vals)):
         c = col_vals[idx]
         places_for_spaces = len(c) + 1
         no_spaces = img.shape[0] - sum(c) - len(c) + 1
         for possible_spaces in sums(places_for_spaces, no_spaces):
-            possible_col_values[idx].append(np.array(spaces_to_block(c, list(possible_spaces))))
+            possible_col_values[idx].append(
+                np.array(spaces_to_block(c, list(possible_spaces)))
+            )
     return possible_row_values, possible_col_values
+
 
 def update_row_and_masks(idx, possible_row_values, img):
     row = img[idx, :]
-    certain_zeros = np.zeros(len(row), dtype = 'int64')
-    certain_ones = np.ones(len(row), dtype = 'int64')
+    certain_zeros = np.zeros(len(row), dtype="int64")
+    certain_ones = np.ones(len(row), dtype="int64")
     changed = False
     possible_to_solve = True
     for possibility in possible_row_values[idx]:
@@ -78,10 +90,11 @@ def update_row_and_masks(idx, possible_row_values, img):
     possible_row_values[idx] = updated_possibilities.copy()
     return changed, possible_to_solve
 
+
 def update_col_and_masks(idx, possible_col_values, img):
     col = img[:, idx]
-    certain_zeros = np.zeros(len(col), dtype = 'int64')
-    certain_ones = np.ones(len(col), dtype = 'int64')
+    certain_zeros = np.zeros(len(col), dtype="int64")
+    certain_ones = np.ones(len(col), dtype="int64")
     changed = False
     possible_to_solve = True
     for possibility in possible_col_values[idx]:
@@ -104,18 +117,20 @@ def update_col_and_masks(idx, possible_col_values, img):
     possible_col_values[idx] = updated_possibilities.copy()
     return changed, possible_to_solve
 
+
 def print_img(img):
-        proper_img = np.zeros((img.shape[0], img.shape[1]), dtype="<U12")
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                if img[i][j] == 1:
-                    proper_img[i][j] = "#"
-                elif img[i][j] == 0:
-                    proper_img[i][j] = "."
-                else:
-                    proper_img[i][j] = "?"
-            s = "".join(proper_img[i, :])
-            print(s)
+    proper_img = np.zeros((img.shape[0], img.shape[1]), dtype="<U12")
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            if img[i][j] == 1:
+                proper_img[i][j] = "#"
+            elif img[i][j] == 0:
+                proper_img[i][j] = "."
+            else:
+                proper_img[i][j] = "?"
+        s = "".join(proper_img[i, :])
+        print(s)
+
 
 def output_img(img):
     with open("zad_output.txt", "w") as f_out:
@@ -137,6 +152,7 @@ def update_masks_for_val(idx, block, masks):
             updated_possibilities.append(mask)
     return updated_possibilities
 
+
 def infer(img, possible_row_values, possible_col_values):
     while True:
         changed = False
@@ -153,51 +169,62 @@ def infer(img, possible_row_values, possible_col_values):
             break
     return possible_to_solve
 
+
 def is_unfinished(img):
     return np.any(img == -1)
 
-def solve(img, possible_row_values, possible_col_values, tested):
-    while is_unfinished(img):
-        possible_to_solve = infer(img, possible_row_values, possible_col_values)
-        # if(len(np.dstack(np.where(img == -1))[0]) == 0):
-        #     print_img(img)
+
+def set_value(img, possible_row_values, possible_col_values, value, px):
+    copied_img = copy.deepcopy(img)
+    copied_col = possible_col_values.copy()
+    copied_row = possible_row_values.copy()
+    copied_img[tuple(px)] = value
+    row = copied_img[px[0], :]
+    copied_row[px[0]] = update_masks_for_val(px[0], row, copied_row)
+    col = copied_img[:, px[1]]
+    copied_col[px[1]] = update_masks_for_val(px[1], col, copied_col)
+    return copied_img, copied_row, copied_col
+
+
+def solve(img, possible_row_values, possible_col_values):
+    img = copy.deepcopy(img)
+    possible_to_solve = infer(img, possible_row_values, possible_col_values)
+    if not possible_to_solve:
+        return False
+    if not is_unfinished(img):
+        output_img(img)
+        return True
+    unknown = np.dstack(np.where(img == -1))[0]
+    for px in unknown:
+        copied_img, copied_row, copied_col = set_value(
+            img, possible_row_values, possible_col_values, 1, px
+        )
+        if solve(copied_img, copied_row, copied_col):
+            return True
+        img, possible_row_values, possible_col_values, = set_value(
+            img, possible_row_values, possible_col_values, 0, px
+        )
+        possible_to_solve = is_solvable(possible_row_values, possible_col_values)
         if not possible_to_solve:
             return False
-        unknown = np.dstack(np.where(img == -1))[0]
-        # np.random.shuffle(unknown)
-        # print(unknown.shape[0])
-        for px in unknown:
-            if (px[0] + px[1] * 300) in tested:
-                continue
-            tested.add(px[0] + px[1] * 300)
-            copied_img = img.copy()
-            copied_col = possible_col_values.copy()
-            copied_row = possible_row_values.copy()
-            copied_img[tuple(px)] = 1
-            row = copied_img[px[0], :]
-            copied_row[px[0]] = update_masks_for_val(px[0], row, copied_row)
-            col = copied_img[:, px[1]]
-            copied_col[px[1]] = update_masks_for_val(px[1], col, copied_col)
-            if (solve(copied_img, copied_row, copied_col, tested.copy())):
-                return True
-            copied_img = img.copy()
-            copied_col = possible_col_values.copy()
-            copied_row = possible_row_values.copy()
-            copied_img[tuple(px)] = 0
-            row = copied_img[px[0], :]
-            copied_row[px[0]] = update_masks_for_val(px[0], row, copied_row)
-            col = copied_img[:, px[1]]
-            copied_col[px[1]] = update_masks_for_val(px[1], col, copied_col)
-            if(solve(copied_img, copied_row, copied_col, tested.copy())):
-                return True
+
+
+def is_solvable(possible_row_values, possible_col_values):
+    for r in possible_row_values:
+        if len(r) == 0:
             return False
-    output_img(img)
+    for c in possible_col_values:
+        if len(c) == 0:
+            return False
     return True
 
 
 def main_loop():
     img, row_vals, col_vals = init()
-    possible_row_values, possible_col_values = prepare_possibilities(img, row_vals,col_vals)
-    solve(img, possible_row_values, possible_col_values, set())
+    possible_row_values, possible_col_values = prepare_possibilities(
+        img, row_vals, col_vals
+    )
+    solve(img, possible_row_values, possible_col_values)
+
 
 main_loop()
