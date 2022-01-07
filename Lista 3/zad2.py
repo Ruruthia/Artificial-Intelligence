@@ -66,11 +66,19 @@ def prepare_possibilities(img, row_vals, col_vals):
 
 
 def update_row_and_masks(idx, possible_row_values, img):
+    possible_to_solve = True
     row = img[idx, :]
+    updated_possibilities = []
+    for mask in possible_row_values[idx]:
+        if np.all(mask[row == 1] == 1) and np.all(mask[row == 0] == 0):
+            updated_possibilities.append(mask)
+    if len(updated_possibilities) == 0:
+        possible_to_solve = False
+    possible_row_values[idx] = updated_possibilities.copy()
     certain_zeros = np.zeros(len(row), dtype="int64")
     certain_ones = np.ones(len(row), dtype="int64")
     changed = False
-    possible_to_solve = True
+
     for possibility in possible_row_values[idx]:
         certain_zeros |= possibility
         certain_ones &= possibility
@@ -81,22 +89,23 @@ def update_row_and_masks(idx, possible_row_values, img):
         if certain_ones[i] == 1 and row[i] == -1:
             changed = True
             row[i] = 1
-    updated_possibilities = []
-    for mask in possible_row_values[idx]:
-        if np.all(mask[row == 1] == 1) and np.all(mask[row == 0] == 0):
-            updated_possibilities.append(mask)
-    if len(updated_possibilities) == 0:
-        possible_to_solve = False
-    possible_row_values[idx] = updated_possibilities.copy()
+
     return changed, possible_to_solve
 
 
 def update_col_and_masks(idx, possible_col_values, img):
+    possible_to_solve = True
     col = img[:, idx]
+    updated_possibilities = []
+    for mask in possible_col_values[idx]:
+        if np.all(mask[col == 1] == 1) and np.all(mask[col == 0] == 0):
+            updated_possibilities.append(mask)
+    if len(updated_possibilities) == 0:
+        possible_to_solve = False
+    possible_col_values[idx] = updated_possibilities.copy()
     certain_zeros = np.zeros(len(col), dtype="int64")
     certain_ones = np.ones(len(col), dtype="int64")
     changed = False
-    possible_to_solve = True
     for possibility in possible_col_values[idx]:
         certain_zeros |= possibility
         certain_ones &= possibility
@@ -108,13 +117,7 @@ def update_col_and_masks(idx, possible_col_values, img):
             changed = True
             col[i] = 1
     img[:, idx] = col
-    updated_possibilities = []
-    for mask in possible_col_values[idx]:
-        if np.all(mask[col == 1] == 1) and np.all(mask[col == 0] == 0):
-            updated_possibilities.append(mask)
-    if len(updated_possibilities) == 0:
-        possible_to_solve = False
-    possible_col_values[idx] = updated_possibilities.copy()
+
     return changed, possible_to_solve
 
 
@@ -187,36 +190,21 @@ def set_value(img, possible_row_values, possible_col_values, value, px):
 
 
 def solve(img, possible_row_values, possible_col_values):
-    img = copy.deepcopy(img)
-    possible_to_solve = infer(img, possible_row_values, possible_col_values)
-    if not possible_to_solve:
-        return False
-    if not is_unfinished(img):
-        output_img(img)
-        return True
-    unknown = np.dstack(np.where(img == -1))[0]
-    for px in unknown:
+    while is_unfinished(img):
+        possible_to_solve = infer(img, possible_row_values, possible_col_values)
+        if not possible_to_solve:
+            return False
+        unknown = np.dstack(np.where(img == -1))[0]
+        if len(unknown) == 0:
+            output_img(img)
+            return True
+        px = unknown[0]
         copied_img, copied_row, copied_col = set_value(
             img, possible_row_values, possible_col_values, 1, px
         )
         if solve(copied_img, copied_row, copied_col):
             return True
-        img, possible_row_values, possible_col_values, = set_value(
-            img, possible_row_values, possible_col_values, 0, px
-        )
-        possible_to_solve = is_solvable(possible_row_values, possible_col_values)
-        if not possible_to_solve:
-            return False
-
-
-def is_solvable(possible_row_values, possible_col_values):
-    for r in possible_row_values:
-        if len(r) == 0:
-            return False
-    for c in possible_col_values:
-        if len(c) == 0:
-            return False
-    return True
+        img[tuple(px)] = 0
 
 
 def main_loop():
